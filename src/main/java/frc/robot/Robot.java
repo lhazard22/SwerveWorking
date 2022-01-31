@@ -73,13 +73,13 @@ public class Robot extends TimedRobot {
   @Override
   public void robotInit() {
     flDrive.setInverted(false);
-    flSteer.setInverted(false);
+    flSteer.setInverted(true);
     frDrive.setInverted(false);
-    frSteer.setInverted(false);
+    frSteer.setInverted(true);
     blDrive.setInverted(false);
-    blSteer.setInverted(false);
+    blSteer.setInverted(true);
     brDrive.setInverted(false);
-    brSteer.setInverted(false);
+    brSteer.setInverted(true);
     brSteer.setIdleMode(CANSparkMax.IdleMode.kBrake);
     blSteer.setIdleMode(CANSparkMax.IdleMode.kBrake);
     frSteer.setIdleMode(CANSparkMax.IdleMode.kBrake);
@@ -143,18 +143,22 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
     // TODO get angle fron gyro
+
+    //Finds the X Value of the Left Stick on the Controller and Takes Care of Joystick Drift
     if (Math.abs(driverController.getX(Hand.kLeft)) < deadzone) {
       x = 0;
     } else {
       x = driverController.getX(Hand.kLeft);
     }
 
+    //Finds the Y Value of the Left Stick on the Controller and Takes Care of Joystick Drift
     if (Math.abs(driverController.getY(Hand.kLeft)) < deadzone) {
       y = 0;
     } else {
       y = -driverController.getY(Hand.kLeft);
     }
 
+    //Finds the X Value of the Right Stick on the Controller and Takes Care of Joystick Drift
     if (Math.abs(driverController.getX(Hand.kRight)) < deadzone) {
       rot = 0;
     } else {
@@ -170,16 +174,80 @@ public class Robot extends TimedRobot {
     double C = vy - omega * length / 2;
     double D = vy + omega * length / 2;
 
-    double w1s = Math.sqrt(Math.pow(B, 2) + Math.pow(C, 2));
-    double w2s = Math.sqrt(Math.pow(B, 2) + Math.pow(D, 2));
-    double w3s = Math.sqrt(Math.pow(A, 2) + Math.pow(D, 2));
-    double w4s = Math.sqrt(Math.pow(A, 2) + Math.pow(C, 2));
+    
+    //Finds Speeds for Each of the Wheels
+    double w1s = Math.sqrt(Math.pow(B, 2) + Math.pow(C, 2)) / 10;
+    double w2s = Math.sqrt(Math.pow(B, 2) + Math.pow(D, 2)) / 10;
+    double w3s = Math.sqrt(Math.pow(A, 2) + Math.pow(D, 2)) / 10;
+    double w4s = Math.sqrt(Math.pow(A, 2) + Math.pow(C, 2)) / 10;
 
-    double w1a = Math.atan2(B, C) * (180 / Math.PI);
-    double w2a = Math.atan2(B, D) * (180 / Math.PI);
-    double w3a = Math.atan2(A, D) * (180 / Math.PI);
-    double w4a = Math.atan2(A, C) * (180 / Math.PI);
 
+    //Finds the Desired Angle
+    double w1a = (Math.atan2(B, C) * (180 / Math.PI)) + 180;
+    double w2a = (Math.atan2(B, D) * (180 / Math.PI)) + 180;
+    double w3a = (Math.atan2(A, D) * (180 / Math.PI)) + 180;
+    double w4a = (Math.atan2(A, C) * (180 / Math.PI)) + 180;
+
+    
+    //Manipulates Degree Values so 0 is on top and degree values get bigger when going clockwise
+    if (w1a == 360) {
+      w1a = 0;
+    }
+    if (w2a == 360) {
+      w2a = 0;
+    }
+    if (w3a == 360) {
+      w3a = 0;
+    }
+    if (w4a == 360) {
+      w4a = 0;
+    }
+
+    if (w1a <= 180) {
+      w1a = w1a + 180;
+    } else if (w1a > 180) {
+      w1a = w1a - 180;
+    }
+
+    if (w2a <= 180) {
+      w2a = w2a + 180;
+    } else if (w2a > 180) {
+      w2a = w2a - 180;
+    }
+    
+    if (w3a <= 180) {
+      w3a = w3a + 180;
+    } else if (w3a > 180) {
+      w3a = w3a - 180;
+    }
+
+    if (w4a <= 180) {
+      w4a = w4a + 180;
+    } else if (w4a > 180) {
+      w4a = w4a - 180;
+    }
+
+
+    if (w1a == 360) {
+      w1a = 0;
+    }
+    if (w2a == 360) {
+      w2a = 0;
+    }
+    if (w3a == 360) {
+      w3a = 0;
+    }
+    if (w4a == 360) {
+      w4a = 0;
+    }
+    
+    //Finds Complimentary Angle to the Desired Angle
+    double w1ra = getRevPosition(w1a);
+    double w2ra = getRevPosition(w2a);
+    double w3ra = getRevPosition(w3a);
+    double w4ra = getRevPosition(w4a);
+
+    //Sets Max Wheel Speed
     double max = w1s;
     if (w2s > max)
       max = w2s;
@@ -193,17 +261,234 @@ public class Robot extends TimedRobot {
       w3s = w3s / max;
       w4s = w4s / max;
     }
-    double spinTolerance = 10;
+    
+    //Sets the Tolerance of Steer Motors to being off of desired angle 
+    double spinTolerance = 5;
 
-    w1ca = -1 * (getPosition(frEncoder.get(), 267.4) - 180);
-    w2ca = -1 * (getPosition(flEncoder.get(), 120.7) - 180);
-    w3ca = -1 * (getPosition(blEncoder.get(), 64.7) - 180);
-    w4ca = -1 * (getPosition(brEncoder.get(), 335.2) - 180);
+    //Finds Actual Angle of Wheels
+    w1ca = (-1 * getPosition(frEncoder.get(), 267.4)) + 360;
+    w2ca = (-1 * getPosition(flEncoder.get(), 120.7)) + 360;
+    w3ca = (-1 * getPosition(blEncoder.get(), 64.7)) + 360;
+    w4ca = (-1 * getPosition(brEncoder.get(), 335.2)) + 360;
 
-    double w1d = w1ca - w1a;
-    double w2d = w2ca - w2a;
-    double w3d = w3ca - w3a;
-    double w4d = w4ca - w4a;
+    if (w1ca == 360) {
+      w1a = 0;
+    }
+    if (w2ca == 360) {
+      w2a = 0;
+    }
+    if (w3ca == 360) {
+      w3a = 0;
+    }
+    if (w4ca == 360) {
+      w4a = 0;
+    }
+
+    double w1d_1 = w1a - w1ca;
+    double w1d_2 = w1ca - w1a;
+    double w1d_3 = w1ra - w1ca;
+    double w1d_4 = w1ca - w1ra;
+
+    double w2d_1 = w2a - w2ca;
+    double w2d_2 = w2ca - w2a;
+    double w2d_3 = w2ra - w2ca;
+    double w2d_4 = w2ca - w2ra;
+
+    double w3d_1 = w3a - w3ca;
+    double w3d_2 = w3ca - w3a;
+    double w3d_3 = w3ra - w3ca;
+    double w3d_4 = w3ca - w3ra;
+
+    double w4d_1 = w4a - w4ca;
+    double w4d_2 = w4ca - w4a;
+    double w4d_3 = w4ra - w4ca;
+    double w4d_4 = w4ca - w4ra;
+
+
+    if (w1d_1 < 0) {
+      w1d_1 = w1d_1 + 360;
+    }
+    if (w1d_2 < 0) {
+      w1d_2 = w1d_2 + 360;
+    }
+    if (w1d_3 < 0) {
+      w1d_3 = w1d_3 + 360;
+    }
+    if (w1d_4 < 0) {
+      w1d_4 = w1d_4 + 360;
+    }
+
+    if (w2d_1 < 0) {
+      w2d_1 = w2d_1 + 360;
+    }
+    if (w2d_2 < 0) {
+      w2d_2 = w2d_2 + 360;
+    }
+    if (w2d_3 < 0) {
+      w2d_3 = w2d_3 + 360;
+    }
+    if (w2d_4 < 0) {
+      w2d_4 = w2d_4 + 360;
+    }
+
+    if (w3d_1 < 0) {
+      w3d_1 = w3d_1 + 360;
+    }
+    if (w3d_2 < 0) {
+      w3d_2 = w3d_2 + 360;
+    }
+    if (w3d_3 < 0) {
+      w3d_3 = w3d_3 + 360;
+    }
+    if (w3d_4 < 0) {
+      w3d_4 = w3d_4 + 360;
+    }
+
+    if (w4d_1 < 0) {
+      w4d_1 = w4d_1 + 360;
+    }
+    if (w4d_2 < 0) {
+      w4d_2 = w4d_2 + 360;
+    }
+    if (w4d_3 < 0) {
+      w4d_3 = w4d_3 + 360;
+    }
+    if (w4d_4 < 0) {
+      w4d_4 = w4d_4 + 360;
+    }
+
+
+    double value_1 = getOptimalRoute(w1d_1, w1d_2, w1d_3, w1d_4);
+    double value_2 = getOptimalRoute(w2d_1, w2d_2, w2d_3, w2d_4);
+    double value_3 = getOptimalRoute(w3d_1, w3d_2, w3d_3, w3d_4);
+    double value_4 = getOptimalRoute(w4d_1, w4d_2, w4d_3, w4d_4);
+    
+
+    if (value_1 == 1) {
+      frDrive.set(w1s);
+      if (w1d_1 > spinTolerance) {
+        frSteer.set(0.07);
+      } else {
+        frSteer.set(0);
+      }
+    } else if (value_1 == 2) {
+      frDrive.set(w1s);
+      if (w1d_2 > spinTolerance) {
+        frSteer.set(-0.07);
+      } else {
+        frSteer.set(0);
+      }
+    } else if (value_1 == 3) {
+      frDrive.set(-w1s);
+      if (w1d_3 > spinTolerance) {
+        frSteer.set(0.07);
+      } else {
+        frSteer.set(0);
+      }
+    } else if (value_1 == 4) {
+      frDrive.set(-w1s);
+      if (w1d_4 > spinTolerance) {
+        frSteer.set(-0.07);
+      } else {
+        frSteer.set(0);
+      }
+    }
+
+    if (value_2 == 1) {
+      flDrive.set(w2s);
+      if (w2d_1 > spinTolerance) {
+        flSteer.set(0.07);
+      } else {
+        flSteer.set(0);
+      }
+    } else if (value_2 == 2) {
+      flDrive.set(w2s);
+      if (w2d_2 > spinTolerance) {
+        flSteer.set(-0.07);
+      } else {
+        flSteer.set(0);
+      }
+    } else if (value_2 == 3) {
+      flDrive.set(-w2s);
+      if (w2d_3 > spinTolerance) {
+        flSteer.set(0.07);
+      } else {
+        flSteer.set(0);
+      }
+    } else if (value_2 == 4) {
+      flDrive.set(-w2s);
+      if (w2d_4 > spinTolerance) {
+        flSteer.set(-0.07);
+      } else {
+        flSteer.set(0);
+      }
+    }
+
+    if (value_3 == 1) {
+      blDrive.set(w3s);
+      if (w3d_1 > spinTolerance) {
+        blSteer.set(0.07);
+      } else {
+        blSteer.set(0);
+      }
+    } else if (value_3 == 2) {
+      blDrive.set(w3s);
+      if (w3d_2 > spinTolerance) {
+        blSteer.set(-0.07);
+      } else {
+        blSteer.set(0);
+      }
+    } else if (value_3 == 3) {
+      blDrive.set(-w3s);
+      if (w3d_3 > spinTolerance) {
+        blSteer.set(0.07);
+      } else {
+        blSteer.set(0);
+      }
+    } else if (value_3 == 4) {
+      blDrive.set(-w3s);
+      if (w3d_4 > spinTolerance) {
+        blSteer.set(-0.07);
+      } else {
+        blSteer.set(0);
+      }
+    }
+
+    if (value_4 == 1) {
+      brDrive.set(w4s);
+      if (w4d_1 > spinTolerance) {
+        brSteer.set(0.07);
+      } else {
+        brSteer.set(0);
+      }
+    } else if (value_4 == 2) {
+      brDrive.set(w4s);
+      if (w4d_2 > spinTolerance) {
+        brSteer.set(-0.07);
+      } else {
+        brSteer.set(0);
+      }
+    } else if (value_4 == 3) {
+      brDrive.set(-w4s);
+      if (w4d_3 > spinTolerance) {
+        brSteer.set(0.07);
+      } else {
+        brSteer.set(0);
+      }
+    } else if (value_4 == 4) {
+      brDrive.set(-w4s);
+      if (w4d_4 > spinTolerance) {
+        brSteer.set(-0.07);
+      } else {
+        brSteer.set(0);
+      }
+    }
+
+    
+    // double w1d = w1ca - w1a;
+    // double w2d = w2ca - w2a;
+    // double w3d = w3ca - w3a;
+    // double w4d = w4ca - w4a;
 
     // System.out.println(getPosition(frEncoder.get(), 267.4) + "Encoder FL");
     // System.out.println(getPosition(flEncoder.get(), 120.7) + "Encoder FL");
@@ -232,147 +517,51 @@ public class Robot extends TimedRobot {
      * else { frSteer.set(0.07); } }
      */
 
-    if (Math.abs(w1d) < spinTolerance) {
-      frSteer.set(0);
-    } else {
-      if (Math.abs(w1d) > 90) {
-        if (w1a >= 0) {
-          w1a = w1a - 180;
-        } else {
-          w1a = w1a + 180;
-        }
-      }
-      if (w1ca > 90 && w1a < -90) {
-        if (((Math.abs(w1ca - 360)) - w1a) < 90) {
-          frSteer.set(-0.07);
-        } else {
-          frSteer.set(0.07);
-        }
-      } else if (w1ca < -90 && w1a > 90) {
-        if (((Math.abs(w1ca + 360)) - w1a) < 90) {
-          frSteer.set(0.07);
-        } else {
-          frSteer.set(-0.07);
-        }
-      } else {
-        if (w1d < 0) {
-          frSteer.set(-0.07);
-        } else {
-          frSteer.set(0.07);
-        }
-      }
-    }
-
-    if (Math.abs(w2d) < spinTolerance) {
-      flSteer.set(0);
-    } else {
-      if (Math.abs(w2d) > 90) {
-        if (w2a >= 0) {
-          w2a = w2a - 180;
-        } else {
-          w2a = w2a + 180;
-        }
-      }
-      if (w2ca > 90 && w2a < -90) {
-        if (((Math.abs(w2ca - 360)) - w2a) < 90) {
-          flSteer.set(-0.07);
-        } else {
-          flSteer.set(0.07);
-        }
-      } else if (w2ca < -90 && w2a > 90) {
-        if (((Math.abs(w2ca + 360)) - w2a) < 90) {
-          flSteer.set(0.07);
-        } else {
-          flSteer.set(-0.07);
-        }
-      } else {
-        if (w2d < 0) {
-          flSteer.set(-0.07);
-        } else {
-          flSteer.set(0.07);
-        }
-      }
-    }
-
-    if (Math.abs(w3d) < spinTolerance) {
-      blSteer.set(0);
-    } else {
-      if (Math.abs(w3d) > 90) {
-        if (w3a >= 0) {
-          w3a = w3a - 180;
-        } else {
-          w3a = w3a + 180;
-        }
-      }
-
-      if (w3ca > 90 && w3a < -90) {
-        if (((Math.abs(w3ca - 360)) - w3a) < 90) {
-          blSteer.set(-0.07);
-        } else {
-          blSteer.set(0.07);
-        }
-      } else if (w3ca < -90 && w3a > 90) {
-        if (((Math.abs(w3ca + 360)) - w3a) < 90) {
-          blSteer.set(0.07);
-        } else {
-          blSteer.set(-0.07);
-        }
-      } else {
-        if (w3d < 0) {
-          blSteer.set(-0.07);
-        } else {
-          blSteer.set(0.07);
-        }
-      }
-    }
-
-    if (Math.abs(w4d) < spinTolerance) {
-      brSteer.set(0);
-    } else {
-      if (Math.abs(w4d) > 90) {
-        if (counter == 0) {
-          System.out.println(w4a);
-        }
-        if (w4a >= 0) {
-          w4a = w4a - 180;
-          System.out.println("B");
-        } else {
-          w4a = w4a + 180;
-          if (counter == 0) {
-            System.out.println(w4a);
-            System.out.println("A");
-            counter = counter + 1;
-          }
-        }
-      }
-      if (w4ca > 90 && w4a < -90) {
-        if (((Math.abs(w4ca - 360)) - w4a) < 90) {
-          brSteer.set(-0.07);
-        } else {
-          brSteer.set(0.07);
-        }
-      } else if (w4ca < -90 && w4a > 90) {
-        if (((Math.abs(w4ca + 360)) - w4a) < 90) {
-          brSteer.set(0.07);
-        } else {
-          brSteer.set(-0.07);
-        }
-      } else {
-        if (w4d < 0) {
-          brSteer.set(-0.07);
-        } else {
-          brSteer.set(0.07);
-        }
-      }
-    }
-
-    frDrive.set(w1s / 3);
-
-    flDrive.set(w2s / 3);
-
-    blDrive.set(w3s / 3);
-
-    brDrive.set(w4s / 3);
+    /*
+     * if (Math.abs(w1d) < spinTolerance) { frSteer.set(0); } else { if
+     * (Math.abs(w1d) > 90) { if (w1a >= 0) { w1a = w1a - 180; } else { w1a = w1a +
+     * 180; } } if (w1ca > 90 && w1a < -90) { if (((Math.abs(w1ca - 360)) - w1a) <
+     * 90) { frSteer.set(-0.07); } else { frSteer.set(0.07); } } else if (w1ca < -90
+     * && w1a > 90) { if (((Math.abs(w1ca + 360)) - w1a) < 90) { frSteer.set(0.07);
+     * } else { frSteer.set(-0.07); } } else { if (w1d < 0) { frSteer.set(-0.07); }
+     * else { frSteer.set(0.07); } } }
+     * 
+     * if (Math.abs(w2d) < spinTolerance) { flSteer.set(0); } else { if
+     * (Math.abs(w2d) > 90) { if (w2a >= 0) { w2a = w2a - 180; } else { w2a = w2a +
+     * 180; } } if (w2ca > 90 && w2a < -90) { if (((Math.abs(w2ca - 360)) - w2a) <
+     * 90) { flSteer.set(-0.07); } else { flSteer.set(0.07); } } else if (w2ca < -90
+     * && w2a > 90) { if (((Math.abs(w2ca + 360)) - w2a) < 90) { flSteer.set(0.07);
+     * } else { flSteer.set(-0.07); } } else { if (w2d < 0) { flSteer.set(-0.07); }
+     * else { flSteer.set(0.07); } } }
+     * 
+     * if (Math.abs(w3d) < spinTolerance) { blSteer.set(0); } else { if
+     * (Math.abs(w3d) > 90) { if (w3a >= 0) { w3a = w3a - 180; } else { w3a = w3a +
+     * 180; } }
+     * 
+     * if (w3ca > 90 && w3a < -90) { if (((Math.abs(w3ca - 360)) - w3a) < 90) {
+     * blSteer.set(-0.07); } else { blSteer.set(0.07); } } else if (w3ca < -90 &&
+     * w3a > 90) { if (((Math.abs(w3ca + 360)) - w3a) < 90) { blSteer.set(0.07); }
+     * else { blSteer.set(-0.07); } } else { if (w3d < 0) { blSteer.set(-0.07); }
+     * else { blSteer.set(0.07); } } }
+     * 
+     * if (Math.abs(w4d) < spinTolerance) { brSteer.set(0); } else { if
+     * (Math.abs(w4d) > 90) { if (counter == 0) { System.out.println(w4a); } if (w4a
+     * >= 0) { w4a = w4a - 180; System.out.println("B"); } else { w4a = w4a + 180;
+     * if (counter == 0) { System.out.println(w4a); System.out.println("A"); counter
+     * = counter + 1; } } } if (w4ca > 90 && w4a < -90) { if (((Math.abs(w4ca -
+     * 360)) - w4a) < 90) { brSteer.set(-0.07); } else { brSteer.set(0.07); } } else
+     * if (w4ca < -90 && w4a > 90) { if (((Math.abs(w4ca + 360)) - w4a) < 90) {
+     * brSteer.set(0.07); } else { brSteer.set(-0.07); } } else { if (w4d < 0) {
+     * brSteer.set(-0.07); } else { brSteer.set(0.07); } } }
+     * 
+     * frDrive.set(w1s / 3);
+     * 
+     * flDrive.set(w2s / 3);
+     * 
+     * blDrive.set(w3s / 3);
+     * 
+     * brDrive.set(w4s / 3);
+     */
 
   }
 
@@ -406,6 +595,37 @@ public class Robot extends TimedRobot {
       angleRaw = angleRaw + 1;
     }
     return angleRaw;
+  }
+
+  public double getRevPosition(double angle) {
+    if (angle >= 180) {
+      return angle - 180;
+    } else {
+      return angle + 180;
+    }
+
+  }
+
+  public double setDifferenceRollover(double dif) {
+    if (dif < 0) {
+      return dif = dif + 360;
+    } else {
+      return dif;
+    }
+  }
+
+  public double getOptimalRoute(double dif1, double dif2, double dif3, double dif4) {
+    if (dif1 <= dif2 && dif1 <= dif3 && dif1 <= dif4) {
+      return 1;
+    } else if (dif2 <= dif1 && dif2 <= dif3 && dif2 <= dif4) {
+      return 2;
+    } else if (dif3 <= dif1 && dif3 <= dif2 && dif3 <= dif4) {
+      return 3;
+    } else if (dif4 <= dif1 && dif4 <= dif2 && dif4 <= dif3) {
+      return 4;
+    } else {
+      return 0;
+    }
   }
   // Offsets
   // FR = 267.4
